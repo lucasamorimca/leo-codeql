@@ -1,0 +1,4 @@
+name: leo-codeql/leo-queries
+version: 0.1.0
+dependencies:
+  leo-codeql/leo-all: "*"

@@ -1,0 +1,178 @@
+/**
+ * Leo database schema
+ * Maps Leo AST to relational tables for CodeQL analysis
+ */
+
+// Source Infrastructure
+
+@location = @location_default;
+
+locations_default(
+    unique int id: @location_default,
+    int file: @file ref,
+    int beginLine: int ref,
+    int beginColumn: int ref,
+    int endLine: int ref,
+    int endColumn: int ref
+);
+
+@file = @file_default;
+files(unique int id: @file_default, string name: string ref);
+
+@folder = @folder_default;
+folders(unique int id: @folder_default, string name: string ref);
+
+@container = @file | @folder;
+containerparent(int parent: @container ref, int child: @container ref);
+
+// AST Node Infrastructure
+leo_ast_node_location(int node: @leo_ast_node ref, int location: @location ref);
+
+#keyset[parent, index]
+leo_ast_node_parent(int node: @leo_ast_node ref, int parent: @leo_ast_node ref, int index: int ref);
+
+// Program Level
+leo_programs(unique int id: @leo_program, string name: string ref, string network: string ref);
+
+leo_imports(unique int id: @leo_import, string program_id: string ref, int parent: @leo_program ref);
+
+// Function Declarations
+// kind: 0=function, 1=transition, 2=inline
+leo_functions(
+    unique int id: @leo_function,
+    string name: string ref,
+    int kind: int ref,
+    int is_async: int ref,
+    int parent: @leo_program ref
+);
+
+leo_parameters(
+    unique int id: @leo_parameter,
+    string name: string ref,
+    int type_id: @leo_type ref,
+    int visibility: int ref,
+    int parent: @leo_function ref,
+    int index: int ref
+);
+
+leo_return_types(int func: @leo_function ref, int type_id: @leo_type ref);
+
+// Struct and Record Declarations
+leo_struct_declarations(
+    unique int id: @leo_struct,
+    string name: string ref,
+    int is_record: int ref,
+    int parent: @leo_program ref
+);
+
+#keyset[parent, index]
+leo_struct_fields(
+    unique int id: @leo_struct_field,
+    string name: string ref,
+    int type_id: @leo_type ref,
+    int visibility: int ref,
+    int parent: @leo_struct ref,
+    int index: int ref
+);
+
+// Mapping Declarations
+leo_mappings(
+    unique int id: @leo_mapping,
+    string name: string ref,
+    int key_type: @leo_type ref,
+    int value_type: @leo_type ref,
+    int parent: @leo_program ref
+);
+
+// Type System
+// kind: 0=bool, 1-5=unsigned (u8/u16/u32/u64/u128),
+//       6-10=signed (i8/i16/i32/i64/i128), 11=field, 12=group,
+//       13=scalar, 14=address, 15=signature, 16=string,
+//       17=array, 18=tuple, 19=named, 20=future, 21=unit
+leo_types(unique int id: @leo_type, int kind: int ref, string name: string ref);
+
+leo_array_types(int type_id: @leo_type ref, int element: @leo_type ref, int size: int ref);
+
+leo_tuple_type_elements(int type_id: @leo_type ref, int element: @leo_type ref, int index: int ref);
+
+// Statements
+// kind: 0=expr, 1=return, 2=let, 3=const, 4=assign, 5=if, 6=for, 7=block, 8=assert
+leo_stmts(unique int id: @leo_stmt, int kind: int ref);
+
+// Variable Declarations (for let/const statements)
+leo_variable_decls(int stmt: @leo_stmt ref, string name: string ref, int type_id: @leo_type ref);
+
+// If Statement Parts
+leo_if_condition(int stmt: @leo_stmt ref, int expr: @leo_expr ref);
+leo_if_then(int stmt: @leo_stmt ref, int block: @leo_stmt ref);
+leo_if_else(int stmt: @leo_stmt ref, int block: @leo_stmt ref);
+
+// For Loop Parts
+leo_for_variable(int stmt: @leo_stmt ref, string name: string ref);
+leo_for_range(int stmt: @leo_stmt ref, int lower: @leo_expr ref, int upper: @leo_expr ref);
+leo_for_body(int stmt: @leo_stmt ref, int block: @leo_stmt ref);
+
+// Assignment Statement
+leo_assign_ops(int stmt: @leo_stmt ref, int op: int ref);
+leo_assign_lhs(int stmt: @leo_stmt ref, int expr: @leo_expr ref);
+leo_assign_rhs(int stmt: @leo_stmt ref, int expr: @leo_expr ref);
+
+// Expressions
+// kind: 0=literal, 1=variable, 2=binary, 3=unary, 4=ternary,
+//       5=call, 6=method_call, 7=field_access, 8=index_access,
+//       9=tuple_access, 10=cast, 11=struct_init, 12=self_expr,
+//       13=block_expr, 14=associated_const, 15=associated_fn_call
+leo_exprs(unique int id: @leo_expr, int kind: int ref);
+
+// Binary Expression Parts
+leo_binary_ops(int expr: @leo_expr ref, int op: int ref);
+leo_binary_lhs(int expr: @leo_expr ref, int lhs: @leo_expr ref);
+leo_binary_rhs(int expr: @leo_expr ref, int rhs: @leo_expr ref);
+
+// Unary Expression Parts
+leo_unary_ops(int expr: @leo_expr ref, int op: int ref);
+leo_unary_operand(int expr: @leo_expr ref, int operand: @leo_expr ref);
+
+// Ternary Expression Parts
+leo_ternary_condition(int expr: @leo_expr ref, int cond: @leo_expr ref);
+leo_ternary_then(int expr: @leo_expr ref, int then_expr: @leo_expr ref);
+leo_ternary_else(int expr: @leo_expr ref, int else_expr: @leo_expr ref);
+
+// Literal Values
+leo_literal_values(int expr: @leo_expr ref, string value: string ref, string type_suffix: string ref);
+
+// Variable References
+leo_variable_refs(int expr: @leo_expr ref, string name: string ref);
+
+// Function/Method Calls
+leo_call_targets(int expr: @leo_expr ref, string name: string ref);
+
+#keyset[call, index]
+leo_call_args(int call: @leo_expr ref, int arg: @leo_expr ref, int index: int ref);
+
+// Cast Expression
+leo_cast_type(int expr: @leo_expr ref, int type_id: @leo_type ref);
+
+// Field/Member Access
+leo_field_access_name(int expr: @leo_expr ref, string name: string ref);
+leo_field_access_base(int expr: @leo_expr ref, int base: @leo_expr ref);
+
+// Struct Initialization
+leo_struct_init_name(int expr: @leo_expr ref, string name: string ref);
+
+#keyset[expr, index]
+leo_struct_init_fields(
+    int expr: @leo_expr ref,
+    string field_name: string ref,
+    int value: @leo_expr ref,
+    int index: int ref
+);
+
+// Type Unions
+@leo_ast_node = @leo_program | @leo_import | @leo_function | @leo_parameter
+    | @leo_struct | @leo_struct_field | @leo_mapping
+    | @leo_type | @leo_stmt | @leo_expr;
+
+@leo_declaration = @leo_function | @leo_struct | @leo_mapping;
+
+@leo_callable = @leo_function;

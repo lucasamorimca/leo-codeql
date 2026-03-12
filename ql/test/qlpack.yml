@@ -1,0 +1,4 @@
+name: leo-codeql/leo-tests
+version: 0.1.0
+libraryPathDependencies:
+  leo-codeql/leo-all
