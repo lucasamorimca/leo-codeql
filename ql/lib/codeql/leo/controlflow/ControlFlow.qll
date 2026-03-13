@@ -27,6 +27,14 @@ class CfgNode extends AstNode {
       result = block.getStatement(i + 1)
     )
     or
+    // If statement: previous statement flows to condition
+    exists(IfStmt ifStmt, BlockStmt parent, int i |
+      ifStmt = parent.getStatement(i) and
+      i > 0 and
+      this = parent.getStatement(i - 1) and
+      result = ifStmt.getCondition()
+    )
+    or
     // If statement: condition flows to then or else
     exists(IfStmt ifStmt |
       this = ifStmt.getCondition() and
@@ -47,16 +55,16 @@ class CfgNode extends AstNode {
       result = parent.getStatement(i + 1)
     )
     or
-    // For loop: condition flows to body, body flows back to condition
+    // For loop: bounds flow to body, body flows back to itself (loop)
     exists(ForStmt forStmt |
       (this = forStmt.getLowerBound() or this = forStmt.getUpperBound()) and
       result = forStmt.getBody()
       or
       this = forStmt.getBody() and
-      result = forStmt.getLowerBound()
+      result = forStmt.getBody()
     )
     or
-    // For loop exits to next statement
+    // For loop exits to next statement (from bounds, not body)
     exists(ForStmt forStmt, BlockStmt parent, int i |
       (this = forStmt.getLowerBound() or this = forStmt.getUpperBound()) and
       forStmt = parent.getStatement(i) and
@@ -110,8 +118,14 @@ class CfgNode extends AstNode {
 class EntryNode extends CfgNode {
   EntryNode() {
     exists(Function f |
-      this = f.getAStatement() and
-      not exists(CfgNode pred | pred.getASuccessor() = this)
+      this.getEnclosingFunction() = f and
+      this instanceof Stmt and
+      not exists(CfgNode pred |
+        pred.getASuccessor() = this and
+        pred.getEnclosingFunction() = f
+      ) and
+      // Must be in a block (not nested in if/for)
+      this.getParent() instanceof BlockStmt
     )
   }
 
@@ -129,8 +143,16 @@ class ExitNode extends CfgNode {
     this instanceof ReturnStmt or
     (
       this instanceof Stmt and
-      not exists(this.getASuccessor()) and
-      exists(this.getEnclosingFunction())
+      exists(Function f, BlockStmt topBlock |
+        f = this.getEnclosingFunction() and
+        // Get the top-level block of the function
+        topBlock.getParent() = f and
+        // This is the last statement in the top-level block
+        exists(int lastIndex |
+          this = topBlock.getStatement(lastIndex) and
+          not exists(topBlock.getStatement(lastIndex + 1))
+        )
+      )
     )
   }
 

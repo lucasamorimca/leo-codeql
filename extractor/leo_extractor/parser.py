@@ -83,6 +83,26 @@ class Parser:
                 return
             self.advance()
 
+    def make_location(self, start_token: Token, end_token: Optional[Token] = None) -> SourceLocation:
+        """Create source location from token positions.
+
+        Args:
+            start_token: Token marking start position
+            end_token: Optional token marking end position (defaults to current token)
+
+        Returns:
+            SourceLocation
+        """
+        if end_token is None:
+            end_token = self.current_token()
+        return SourceLocation(
+            file_path=self.file_path,
+            start_line=start_token.location.start_line,
+            start_col=start_token.location.start_col,
+            end_line=end_token.location.end_line,
+            end_col=end_token.location.end_col
+        )
+
     def parse_type(self, tokens: list[Token], pos: int) -> tuple[Optional[Type], int]:
         """Parse type expression.
 
@@ -249,6 +269,7 @@ class Parser:
 
     def parse_let_stmt(self) -> Optional[LetStmt]:
         """Parse let statement: let var: Type = expr;"""
+        start_token = self.current_token()
         self.expect(TokenType.LET)
         if self.current_token().type != TokenType.IDENTIFIER:
             return None
@@ -269,7 +290,8 @@ class Parser:
                 return None
 
         self.expect(TokenType.SEMICOLON)
-        return LetStmt(var_name=var_name, var_type=var_type, initializer=initializer)
+        location = self.make_location(start_token)
+        return LetStmt(var_name=var_name, var_type=var_type, initializer=initializer, location=location)
 
     def parse_const_stmt(self) -> Optional[ConstStmt]:
         """Parse const statement: const VAR: Type = expr;"""
@@ -298,6 +320,7 @@ class Parser:
 
     def parse_if_stmt(self) -> Optional[IfStmt]:
         """Parse if statement."""
+        start_token = self.current_token()
         self.expect(TokenType.IF)
         condition = self.parse_expression()
         if condition is None:
@@ -310,11 +333,21 @@ class Parser:
         else_block = None
         if self.current_token().type == TokenType.ELSE:
             self.advance()
-            else_block = self.parse_block_stmt()
-            if else_block is None:
-                return None
+            # Check for else if
+            if self.current_token().type == TokenType.IF:
+                # Parse else if as nested if statement, wrap in block
+                nested_if = self.parse_if_stmt()
+                if nested_if is None:
+                    return None
+                else_block = BlockStmt(statements=[nested_if])
+            else:
+                # Regular else with block
+                else_block = self.parse_block_stmt()
+                if else_block is None:
+                    return None
 
-        return IfStmt(condition=condition, then_block=then_block, else_block=else_block)
+        location = self.make_location(start_token)
+        return IfStmt(condition=condition, then_block=then_block, else_block=else_block, location=location)
 
     def parse_for_stmt(self) -> Optional[ForStmt]:
         """Parse for statement: for var in start..end { ... }"""
@@ -348,12 +381,14 @@ class Parser:
 
     def parse_return_stmt(self) -> Optional[ReturnStmt]:
         """Parse return statement."""
+        start_token = self.current_token()
         self.expect(TokenType.RETURN)
         value = None
         if self.current_token().type != TokenType.SEMICOLON:
             value = self.parse_expression()
         self.expect(TokenType.SEMICOLON)
-        return ReturnStmt(value=value)
+        location = self.make_location(start_token)
+        return ReturnStmt(value=value, location=location)
 
     def parse_assert_stmt(self) -> Optional[AssertStmt]:
         """Parse assert statement."""
@@ -414,6 +449,7 @@ class Parser:
 
     def parse_block_stmt(self) -> Optional[BlockStmt]:
         """Parse block statement: { stmts... }"""
+        start_token = self.current_token()
         if self.current_token().type != TokenType.LBRACE:
             return None
         self.advance()
@@ -430,7 +466,8 @@ class Parser:
             return None
         self.advance()
 
-        return BlockStmt(statements=statements)
+        location = self.make_location(start_token)
+        return BlockStmt(statements=statements, location=location)
 
     def parse_expr_or_assign_stmt(self) -> Optional[Statement]:
         """Parse expression or assignment statement."""
@@ -469,8 +506,14 @@ class Parser:
 
     def parse_parameter(self) -> Optional[Parameter]:
         """Parse function parameter."""
-        if self.current_token().type == TokenType.PUBLIC or self.current_token().type == TokenType.PRIVATE:
-            self.advance()  # Skip visibility modifier
+        start_token = self.current_token()
+        visibility = None
+        if self.current_token().type == TokenType.PUBLIC:
+            visibility = "public"
+            self.advance()
+        elif self.current_token().type == TokenType.PRIVATE:
+            visibility = "private"
+            self.advance()
 
         if self.current_token().type != TokenType.IDENTIFIER:
             return None
@@ -486,10 +529,12 @@ class Parser:
             return None
         self.pos = new_pos
 
-        return Parameter(name=name, param_type=param_type)
+        location = self.make_location(start_token)
+        return Parameter(name=name, param_type=param_type, visibility=visibility, location=location)
 
     def parse_function(self) -> Optional[FunctionDecl]:
         """Parse function declaration."""
+        start_token = self.current_token()
         # Parse function kind
         is_async = False
         if self.current_token().type == TokenType.ASYNC:
@@ -547,13 +592,15 @@ class Parser:
         if body is None:
             return None
 
+        location = self.make_location(start_token)
         return FunctionDecl(
             kind=kind,
             is_async=is_async,
             name=name,
             parameters=parameters,
             return_type=return_type,
-            body=body
+            body=body,
+            location=location
         )
 
     def parse_struct(self) -> Optional[StructDecl]:

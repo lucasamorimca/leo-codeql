@@ -368,6 +368,7 @@ class Parameter:
     """Function parameter."""
     name: str = ""
     param_type: Optional[Type] = None
+    visibility: Optional[str] = None  # "public", "private", or None
     node_id: int = field(default_factory=next_node_id)
     location: Optional[SourceLocation] = None
 

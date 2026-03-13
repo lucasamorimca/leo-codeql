@@ -13,12 +13,12 @@ import codeql.leo.Leo
  */
 predicate containsSubtraction(Expr expr) {
   exists(BinaryExpr binExpr |
-    binExpr.getOperator() = 1 and // subtraction
-    (binExpr = expr or binExpr = expr.(BinaryExpr).getLeftOperand() or binExpr = expr.(BinaryExpr).getRightOperand())
+    binExpr.getOperator() = 15 and // subtraction (SUB = 15 in BinaryOp enum)
+    binExpr = expr.getAChildExpr()
   )
   or
   // Direct subtraction
-  expr.(BinaryExpr).getOperator() = 1
+  expr.(BinaryExpr).getOperator() = 15
 }
 
 from TernaryExpr ternary, Expr branch

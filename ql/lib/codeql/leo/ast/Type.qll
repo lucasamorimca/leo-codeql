@@ -176,8 +176,18 @@ class NamedType extends LeoType {
 
   /**
    * Gets the struct declaration this type refers to
+   * Note: Multiple programs may have structs with the same name.
+   * Callers should scope by program if needed.
    */
   StructDeclaration getStructDeclaration() { result.getName() = this.getName() }
+
+  /**
+   * Gets the struct declaration scoped to a specific program
+   */
+  StructDeclaration getStructDeclarationInProgram(Program p) {
+    result.getName() = this.getName() and
+    result.getProgram() = p
+  }
 
   override string toString() { result = this.getName() }
 }

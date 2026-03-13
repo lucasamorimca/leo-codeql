@@ -42,6 +42,16 @@ predicate isPublicChainCall(CallExpr call) {
       methodCall.getMethodName() = "remove"
     )
   )
+  or
+  // Mapping operations are parsed as associated function calls (Mapping::set)
+  exists(AssociatedFnCallExpr assocCall |
+    assocCall = call and
+    (
+      assocCall.getFunctionName() = "set" or
+      assocCall.getFunctionName() = "update" or
+      assocCall.getFunctionName() = "remove"
+    )
+  )
 }
 
 from TransitionFunction transition, CallExpr call, Expr arg

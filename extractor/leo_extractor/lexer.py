@@ -259,16 +259,26 @@ class Lexer:
         while self.current_char() and self.current_char() != '\n':
             self.advance()
 
-    def skip_block_comment(self):
-        """Skip block comment: /* ... */"""
+    def skip_block_comment(self) -> Optional[Token]:
+        """Skip block comment: /* ... */
+
+        Returns:
+            None if comment is properly closed, error token if unterminated
+        """
+        start_line = self.line
+        start_col = self.col
         self.advance()  # /
         self.advance()  # *
         while self.current_char():
             if self.current_char() == '*' and self.peek_char() == '/':
                 self.advance()  # *
                 self.advance()  # /
-                break
+                return None  # Successfully closed
             self.advance()
+
+        # EOF reached before closing */
+        location = SourceLocation(self.file_path, start_line, start_col, self.line, self.col)
+        return Token(TokenType.ERROR, "/* unterminated block comment", location)
 
     def read_string(self, start_line: int, start_col: int) -> Token:
         """Read string literal."""
@@ -281,11 +291,15 @@ class Lexer:
                     value += self.advance()
             else:
                 value += self.advance()
-        if self.current_char() == '"':
-            value += self.advance()  # closing "
 
         location = SourceLocation(self.file_path, start_line, start_col, self.line, self.col)
-        return Token(TokenType.STRING, value, location)
+
+        if self.current_char() == '"':
+            value += self.advance()  # closing "
+            return Token(TokenType.STRING, value, location)
+        else:
+            # Unterminated string - emit error token
+            return Token(TokenType.ERROR, value, location)
 
     def read_number_or_typed_literal(self, start_line: int, start_col: int) -> Token:
         """Read number literal with optional type suffix."""
@@ -372,7 +386,9 @@ class Lexer:
             self.skip_line_comment()
             return self.next_token()
         if char == '/' and self.peek_char() == '*':
-            self.skip_block_comment()
+            error_token = self.skip_block_comment()
+            if error_token:
+                return error_token  # Return error for unterminated block comment
             return self.next_token()
 
         # String literals

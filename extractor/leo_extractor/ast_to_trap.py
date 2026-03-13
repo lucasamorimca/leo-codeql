@@ -83,6 +83,10 @@ class AstToTrap:
         for idx, mapping in enumerate(program.mappings):
             self._convert_mapping(mapping, program_label, idx)
 
+        # Emit constants
+        for idx, const in enumerate(program.constants):
+            self._convert_const_decl(const, program_label, idx)
+
         # Emit functions
         for idx, func in enumerate(program.functions):
             self._convert_function(func, program_label, idx)
@@ -269,6 +273,9 @@ class AstToTrap:
             for idx, elem_type in enumerate(typ.element_types):
                 elem_label = self._convert_type(elem_type)
                 self.writer.emit("leo_tuple_type_elements", type_label, elem_label, idx)
+        elif isinstance(typ, FutureType) and typ.inner_type:
+            inner_label = self._convert_type(typ.inner_type)
+            self.writer.emit("leo_future_inner_type", type_label, inner_label)
 
         return type_label
 
@@ -330,8 +337,8 @@ class AstToTrap:
         field_label = self.writer.get_or_create_label(field.node_id)
         type_label = self._convert_type(field.field_type) if field.field_type else self.writer.fresh_id()
 
-        # Map visibility: public=1, private=2, constant=3, none=0
-        visibility_map = {"public": 1, "private": 2, "constant": 3}
+        # Map visibility: private=0, public=1, constant=2, none=0
+        visibility_map = {"private": 0, "public": 1, "constant": 2}
         visibility = visibility_map.get(field.visibility, 0) if field.visibility else 0
 
         self.writer.emit("leo_struct_fields", field_label, field.name, type_label, visibility, record_label, index)
@@ -351,6 +358,23 @@ class AstToTrap:
 
         self.writer.emit("leo_mappings", mapping_label, mapping.name, key_label, value_label, program_label)
         self._emit_parent(mapping_label, program_label, index)
+
+    def _convert_const_decl(self, const: ConstDecl, program_label: str, index: int) -> None:
+        """Convert constant declaration to TRAP.
+
+        Args:
+            const: Constant declaration node
+            program_label: Parent program label
+            index: Constant index within program
+        """
+        const_label = self.writer.get_or_create_label(const.node_id)
+        type_label = self._convert_type(const.const_type) if const.const_type else self.writer.fresh_id()
+
+        self.writer.emit("leo_constants", const_label, const.name, type_label, program_label)
+        self._emit_parent(const_label, program_label, index)
+
+        if const.value:
+            self._convert_expression(const.value, const_label, 0)
 
     def _convert_function(self, func: FunctionDecl, program_label: str, index: int) -> None:
         """Convert function declaration to TRAP.
@@ -398,8 +422,11 @@ class AstToTrap:
         param_label = self.writer.get_or_create_label(param.node_id)
         type_label = self._convert_type(param.param_type) if param.param_type else self.writer.fresh_id()
 
-        # Parameters don't have visibility modifiers in current schema (use 0)
-        self.writer.emit("leo_parameters", param_label, param.name, type_label, 0, func_label, index)
+        # Map visibility: public=1, private=0, none=0
+        visibility_map = {"public": 1, "private": 0}
+        visibility = visibility_map.get(param.visibility, 0) if param.visibility else 0
+
+        self.writer.emit("leo_parameters", param_label, param.name, type_label, visibility, func_label, index)
         self._emit_parent(param_label, func_label, index)
 
     def _convert_statement(self, stmt: Statement, parent_label: str, index: int) -> None:
@@ -580,15 +607,21 @@ class AstToTrap:
             for field_idx, (field_name, field_value) in enumerate(expr.fields):
                 value_label = self._convert_expression(field_value, expr_label, field_idx)
                 self.writer.emit("leo_struct_init_fields", expr_label, field_name, value_label, field_idx)
-        elif isinstance(expr, (SelfAccessExpr, BlockAccessExpr, NetworkAccessExpr)):
+        elif isinstance(expr, SelfAccessExpr):
             self.writer.emit("leo_exprs", expr_label, 12)
-            # Self/block/network access - store member/property as variable ref
-            if isinstance(expr, SelfAccessExpr):
-                self.writer.emit("leo_variable_refs", expr_label, f"self.{expr.member}")
-            elif isinstance(expr, BlockAccessExpr):
-                self.writer.emit("leo_variable_refs", expr_label, f"block.{expr.property}")
-            elif isinstance(expr, NetworkAccessExpr):
-                self.writer.emit("leo_variable_refs", expr_label, f"network.{expr.property}")
+            # Self access - store member as variable ref
+            self.writer.emit("leo_variable_refs", expr_label, f"self.{expr.member}")
+            self.writer.emit("leo_self_kind", expr_label, "self")
+        elif isinstance(expr, BlockAccessExpr):
+            self.writer.emit("leo_exprs", expr_label, 12)
+            # Block access - store property as variable ref
+            self.writer.emit("leo_variable_refs", expr_label, f"block.{expr.property}")
+            self.writer.emit("leo_self_kind", expr_label, "block")
+        elif isinstance(expr, NetworkAccessExpr):
+            self.writer.emit("leo_exprs", expr_label, 12)
+            # Network access - store property as variable ref
+            self.writer.emit("leo_variable_refs", expr_label, f"network.{expr.property}")
+            self.writer.emit("leo_self_kind", expr_label, "network")
 
         self._emit_parent(expr_label, parent_label, index)
         return expr_label

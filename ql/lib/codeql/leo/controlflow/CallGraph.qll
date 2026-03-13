@@ -31,14 +31,11 @@ Function getEnclosingFunction(AstNode n) {
  */
 predicate reachableFrom(Function caller, Function callee) {
   // Direct call
-  exists(CallExpr call |
-    getEnclosingFunction(call) = caller and
-    callEdge(call, callee)
-  )
+  directlyCallsTo(caller, callee)
   or
-  // Transitive call
+  // Transitive call (left-linear recursion)
   exists(Function intermediate |
-    reachableFrom(caller, intermediate) and
+    directlyCallsTo(caller, intermediate) and
     reachableFrom(intermediate, callee)
   )
 }
@@ -194,10 +191,12 @@ MethodCallExpr getAMethodCallIn(Function f) {
 Function accessesStruct(string structName) {
   exists(FieldAccessExpr access |
     getEnclosingFunction(access) = result and
-    exists(StructInitExpr init |
-      init.getStructName() = structName and
-      getEnclosingFunction(init) = result
-    )
+    access.getBase().(VarRef).getName() = structName
+  )
+  or
+  exists(StructInitExpr init |
+    init.getStructName() = structName and
+    getEnclosingFunction(init) = result
   )
 }
 
