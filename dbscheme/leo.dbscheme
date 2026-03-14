@@ -5,9 +5,6 @@
 
 // Source Infrastructure
 
-// Source location prefix (required by CodeQL)
-sourceLocationPrefix(string prefix: string ref);
-
 @location = @location_default;
 
 locations_default(

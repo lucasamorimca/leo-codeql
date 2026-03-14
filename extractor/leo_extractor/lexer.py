@@ -32,6 +32,7 @@ class TokenType(Enum):
     FUNCTION = auto()
     TRANSITION = auto()
     INLINE = auto()
+    FINALIZE = auto()
     ASYNC = auto()
     CONST = auto()
     LET = auto()
@@ -155,6 +156,7 @@ KEYWORDS = {
     "function": TokenType.FUNCTION,
     "transition": TokenType.TRANSITION,
     "inline": TokenType.INLINE,
+    "finalize": TokenType.FINALIZE,
     "async": TokenType.ASYNC,
     "const": TokenType.CONST,
     "let": TokenType.LET,

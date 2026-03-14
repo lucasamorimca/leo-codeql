@@ -34,6 +34,7 @@ class FunctionKind(Enum):
     INLINE = auto()
     FUNCTION = auto()
     TRANSITION = auto()
+    FINALIZE = auto()
 
 
 class UnaryOp(Enum):

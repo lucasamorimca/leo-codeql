@@ -18,7 +18,7 @@ class Function extends AstNode, @leo_function {
 
   /**
    * Gets the kind of this function
-   * 0=function, 1=transition, 2=inline
+   * 0=function, 1=transition, 2=inline, 3=finalize
    */
   int getKind() { leo_functions(this, _, result, _, _) }
 
@@ -36,6 +36,11 @@ class Function extends AstNode, @leo_function {
    * Checks if this is an inline function
    */
   predicate isInline() { this.getKind() = 2 }
+
+  /**
+   * Checks if this is a finalize function
+   */
+  predicate isFinalize() { this.getKind() = 3 }
 
   /**
    * Checks if this is an async function (returns a Future)
@@ -131,6 +136,15 @@ class InlineFunction extends Function {
   InlineFunction() { this.isInline() }
 
   override string toString() { result = "inline " + this.getName() }
+}
+
+/**
+ * A finalize function (async transition finalization)
+ */
+class FinalizeFunction extends Function {
+  FinalizeFunction() { this.isFinalize() }
+
+  override string toString() { result = "finalize " + this.getName() }
 }
 
 /**

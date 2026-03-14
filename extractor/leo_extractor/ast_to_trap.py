@@ -386,11 +386,12 @@ class AstToTrap:
         """
         func_label = self.writer.get_or_create_label(func.node_id)
 
-        # Map function kind: FUNCTION=0, TRANSITION=1, INLINE=2
+        # Map function kind: FUNCTION=0, TRANSITION=1, INLINE=2, FINALIZE=3
         kind_map = {
             FunctionKind.FUNCTION: 0,
             FunctionKind.TRANSITION: 1,
-            FunctionKind.INLINE: 2
+            FunctionKind.INLINE: 2,
+            FunctionKind.FINALIZE: 3
         }
         kind = kind_map.get(func.kind, 0)
         is_async = 1 if func.is_async else 0

@@ -26,11 +26,16 @@ class TrapWriter:
     def fresh_id(self) -> str:
         """Generate unique TRAP entity label like #1, #2, etc.
 
+        Emits label definition (#N=*) to TRAP file.
+
         Returns:
             TRAP entity label (e.g., "#42")
         """
         self._id_counter += 1
-        return f"#{self._id_counter}"
+        label = f"#{self._id_counter}"
+        # Define the label in TRAP file
+        self._lines.append(f"{label}=*")
+        return label
 
     def get_or_create_label(self, node_id: int) -> str:
         """Get TRAP label for an AST node, creating if needed.

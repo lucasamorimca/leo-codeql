@@ -545,6 +545,7 @@ class Parser:
             TokenType.INLINE: FunctionKind.INLINE,
             TokenType.FUNCTION: FunctionKind.FUNCTION,
             TokenType.TRANSITION: FunctionKind.TRANSITION,
+            TokenType.FINALIZE: FunctionKind.FINALIZE,
         }
 
         if self.current_token().type not in kind_map:
@@ -808,7 +809,7 @@ class Parser:
                 const = self.parse_const_decl()
                 if const:
                     constants.append(const)
-            elif token.type in (TokenType.INLINE, TokenType.FUNCTION, TokenType.TRANSITION, TokenType.ASYNC):
+            elif token.type in (TokenType.INLINE, TokenType.FUNCTION, TokenType.TRANSITION, TokenType.FINALIZE, TokenType.ASYNC):
                 func = self.parse_function()
                 if func:
                     functions.append(func)
