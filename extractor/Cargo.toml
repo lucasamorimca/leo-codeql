@@ -1,0 +1,15 @@
+[package]
+name = "leo-extractor"
+version = "0.1.0"
+edition = "2021"
+description = "CodeQL extractor for the Leo programming language"
+
+[dependencies]
+leo-parser = "3.5.0"
+leo-ast = "3.5.0"
+leo-span = "3.5.0"
+leo-errors = "3.5.0"
+
+[profile.release]
+opt-level = 2
+lto = "thin"

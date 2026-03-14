@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Create CodeQL extractor pack for Leo language
-# Bundles the extractor into a distributable pack
+# Bundles the Rust extractor into a distributable pack
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -10,12 +10,16 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 echo "Creating Leo CodeQL extractor pack..."
 echo "Project root: $PROJECT_ROOT"
 
+# Build release binary
+echo "Building Rust extractor..."
+(cd "$PROJECT_ROOT/extractor" && cargo build --release)
+
 # Verify required files exist
 required_files=(
   "codeql-extractor.yml"
   "tools/autobuild.sh"
   "tools/index-files.sh"
-  "extractor/pyproject.toml"
+  "extractor/target/release/leo-extractor"
 )
 
 for file in "${required_files[@]}"; do

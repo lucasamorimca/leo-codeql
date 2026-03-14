@@ -24,10 +24,11 @@ program field_balance.aleo {
             amount: amount,
         };
 
-        return (token, finalize_mint(receiver, amount));
+        let f: Future = finalize_mint(receiver, amount);
+        return (token, f);
     }
 
-    finalize finalize_mint(receiver: address, amount: field) {
+    async function finalize_mint(receiver: address, amount: field) {
         // BUG: field arithmetic has no overflow checks
         let current: field = Mapping::get_or_use(balances, receiver, 0field);
         Mapping::set(balances, receiver, current + amount);

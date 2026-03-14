@@ -11,17 +11,19 @@ program safe_contract.aleo {
     mapping balances: address => u64;
     mapping admin: field => address;
 
-    // Constant for admin address
-    const ADMIN_ADDRESS: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
-
     // Safe initialization with access control
-    async transition initialize(public initial_admin: address) -> Future {
-        return finalize_init(self.caller, initial_admin);
+    async transition initialize(
+        public caller: address,
+        public initial_admin: address
+    ) -> Future {
+        let f: Future = finalize_init(caller, initial_admin);
+        return f;
     }
 
-    finalize finalize_init(caller: address, initial_admin: address) {
+    async function finalize_init(caller: address, initial_admin: address) {
         // SAFE: Access control check before initialization
-        assert_eq(caller, ADMIN_ADDRESS);
+        let expected: address = aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+        assert_eq(caller, expected);
         Mapping::set(admin, 0field, initial_admin);
     }
 
@@ -35,11 +37,12 @@ program safe_contract.aleo {
             amount: amount,
         };
 
-        // SAFE: Only public parameters passed to finalize
-        return (token, finalize_mint(receiver, amount));
+        // SAFE: Only public parameters passed to async function
+        let f: Future = finalize_mint(receiver, amount);
+        return (token, f);
     }
 
-    finalize finalize_mint(receiver: address, amount: u64) {
+    async function finalize_mint(receiver: address, amount: u64) {
         let current: u64 = Mapping::get_or_use(balances, receiver, 0u64);
         Mapping::set(balances, receiver, current + amount);
     }
@@ -69,7 +72,7 @@ program safe_contract.aleo {
     // Safe conditional logic without dangerous ternary
     function calculate_amount(base: u64, bonus: u64, apply_bonus: bool) -> u64 {
         // SAFE: Using if-else instead of ternary with arithmetic
-        if apply_bonus {
+        if (apply_bonus) {
             return base + bonus;
         } else {
             return base;
@@ -84,11 +87,15 @@ program safe_contract.aleo {
     }
 
     // Admin function with proper access control
-    async transition update_admin(public new_admin: address) -> Future {
-        return finalize_update_admin(self.caller, new_admin);
+    async transition update_admin(
+        public caller: address,
+        public new_admin: address
+    ) -> Future {
+        let f: Future = finalize_update_admin(caller, new_admin);
+        return f;
     }
 
-    finalize finalize_update_admin(caller: address, new_admin: address) {
+    async function finalize_update_admin(caller: address, new_admin: address) {
         // SAFE: Verify caller is current admin
         let current_admin: address = Mapping::get(admin, 0field);
         assert_eq(caller, current_admin);

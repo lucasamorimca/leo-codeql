@@ -10,15 +10,16 @@ program basic_token.aleo {
     mapping balances: address => u64;
 
     // Mint new tokens to a recipient
-    transition mint(public receiver: address, public amount: u64) -> Token {
+    async transition mint(public receiver: address, public amount: u64) -> (Token, Future) {
         let token: Token = Token {
             owner: receiver,
             amount: amount,
         };
-        return token then finalize(receiver, amount);
+        let f: Future = finalize_mint(receiver, amount);
+        return (token, f);
     }
 
-    finalize mint(receiver: address, amount: u64) {
+    async function finalize_mint(receiver: address, amount: u64) {
         let current: u64 = Mapping::get_or_use(balances, receiver, 0u64);
         Mapping::set(balances, receiver, current + amount);
     }
@@ -47,10 +48,11 @@ program basic_token.aleo {
             amount: amount,
         };
 
-        return (remaining, transferred, finalize_transfer(to, amount));
+        let f: Future = finalize_transfer(to, amount);
+        return (remaining, transferred, f);
     }
 
-    finalize finalize_transfer(to: address, amount: u64) {
+    async function finalize_transfer(to: address, amount: u64) {
         let current: u64 = Mapping::get_or_use(balances, to, 0u64);
         Mapping::set(balances, to, current + amount);
     }

@@ -52,11 +52,10 @@ Run extractor validation:
 
 Manual extraction:
 ```bash
-cd extractor
 TRAP_FOLDER=/tmp/trap \
 SOURCE_ARCHIVE=/tmp/src \
-LGTM_SRC=/tmp/src \
-uv run python3 -m leo_extractor.main ../test-programs/privacy-leak.leo
+LGTM_SRC=test-programs \
+./extractor/target/release/leo-extractor
 ```
 
 ### Run Detectors
@@ -67,12 +66,12 @@ After building CodeQL database:
 codeql database create leo-test-db --language=leo --source-root=test-programs
 
 # Run specific query
-codeql query run ql/src/Security/PrivacyLeakToFinalize.ql \
+codeql query run ql/src/security/PrivacyLeakToFinalize.ql \
   --database=leo-test-db
 
 # Run all security queries
 codeql database analyze leo-test-db \
-  ql/src/Security/ \
+  ql/src/security/ \
   --format=sarif-latest \
   --output=results.sarif
 ```

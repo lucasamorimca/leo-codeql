@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Leo CodeQL Extractor End-to-End Test Script
-# Tests the extractor on all test programs and verifies TRAP generation
+# Tests the Rust extractor on all test programs and verifies TRAP generation
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_PROGRAMS_DIR="${REPO_ROOT}/test-programs"
@@ -24,11 +24,9 @@ if [ ! -d "${TEST_PROGRAMS_DIR}" ]; then
     exit 1
 fi
 
-# Check if extractor exists
-if [ ! -d "${EXTRACTOR_DIR}" ]; then
-    echo -e "${RED}Error: extractor directory not found at ${EXTRACTOR_DIR}${NC}"
-    exit 1
-fi
+# Build the extractor
+echo -e "${YELLOW}Building extractor...${NC}"
+(cd "${EXTRACTOR_DIR}" && cargo build --release 2>&1 | grep -E "Compiling|Finished|error")
 
 # Count test programs
 TEST_COUNT=$(find "${TEST_PROGRAMS_DIR}" -name "*.leo" -type f | wc -l | tr -d ' ')
@@ -48,72 +46,60 @@ fi
 # Create temporary directories
 mkdir -p "${TEMP_DIR}/trap"
 mkdir -p "${TEMP_DIR}/src"
+mkdir -p "${TEMP_DIR}/archive"
 echo -e "${GREEN}Created temporary directories${NC}\n"
 
-# Track results
+# Copy all test programs to the temp src directory
+cp "${TEST_PROGRAMS_DIR}"/*.leo "${TEMP_DIR}/src/"
+
+# IMPORTANT: SOURCE_ARCHIVE must differ from LGTM_SRC
+# otherwise fs::copy overwrites source files with empty content
+export TRAP_FOLDER="${TEMP_DIR}/trap"
+export SOURCE_ARCHIVE="${TEMP_DIR}/archive"
+export LGTM_SRC="${TEMP_DIR}/src"
+
+# Run the Rust extractor via cargo
+echo -e "${BLUE}Running extraction:${NC}\n"
+if (cd "${EXTRACTOR_DIR}" && cargo run --release 2>&1 | grep -v "^warning:"); then
+    echo ""
+else
+    echo -e "\n${RED}Extractor failed!${NC}"
+    exit 1
+fi
+
+# Count results
 PASSED=0
 FAILED=0
-declare -a FAILED_TESTS
+declare -a FAILED_TESTS=()
 
-# Test each Leo program
-echo -e "${BLUE}Running extraction tests:${NC}\n"
-
-for leo_file in "${TEST_PROGRAMS_DIR}"/*.leo; do
+echo -e "${BLUE}Verifying TRAP files:${NC}\n"
+for leo_file in "${TEMP_DIR}/src"/*.leo; do
     if [ ! -f "${leo_file}" ]; then
         continue
     fi
 
     filename=$(basename "${leo_file}")
     program_name="${filename%.leo}"
+    trap_file="${TEMP_DIR}/trap/${filename}.trap"
 
-    echo -e "${YELLOW}Testing: ${program_name}${NC}"
-
-    # Copy source file to temp src directory
-    cp "${leo_file}" "${TEMP_DIR}/src/"
-
-    # Set up environment variables for extractor
-    export TRAP_FOLDER="${TEMP_DIR}/trap"
-    export SOURCE_ARCHIVE="${TEMP_DIR}/src"
-    export LGTM_SRC="${TEMP_DIR}/src"
-    export CODEQL_EXTRACTOR_LEO_ROOT="${EXTRACTOR_DIR}"
-
-    # Run the extractor (using uv run for proper environment)
-    if cd "${EXTRACTOR_DIR}" && uv run python3 -m leo_extractor.main "${leo_file}" 2>&1 | tee "${TEMP_DIR}/${program_name}.log"; then
-        # Check if TRAP file was created
-        trap_file="${TEMP_DIR}/trap/${filename}.trap"
-
-        if [ -f "${trap_file}" ]; then
-            trap_size=$(wc -l < "${trap_file}" | tr -d ' ')
-            echo -e "  ${GREEN}✓ TRAP file created: ${trap_size} lines${NC}"
-
-            # Show sample of TRAP contents
-            echo -e "  ${BLUE}Sample TRAP output:${NC}"
-            head -n 5 "${trap_file}" | sed 's/^/    /'
-            echo "    ..."
-
-            PASSED=$((PASSED + 1))
-        else
-            echo -e "  ${RED}✗ TRAP file not found at ${trap_file}${NC}"
-            FAILED=$((FAILED + 1))
-            FAILED_TESTS+=("${program_name}: TRAP file not created")
-        fi
+    if [ -f "${trap_file}" ]; then
+        trap_size=$(wc -l < "${trap_file}" | tr -d ' ')
+        echo -e "  ${GREEN}✓${NC} ${program_name}: ${trap_size} lines"
+        PASSED=$((PASSED + 1))
     else
-        echo -e "  ${RED}✗ Extractor failed${NC}"
+        echo -e "  ${RED}✗${NC} ${program_name}: TRAP file not found"
         FAILED=$((FAILED + 1))
-        FAILED_TESTS+=("${program_name}: Extractor execution failed")
+        FAILED_TESTS+=("${program_name}")
     fi
-
-    echo ""
 done
 
 # Print summary
-echo -e "${BLUE}=== Test Summary ===${NC}\n"
+echo -e "\n${BLUE}=== Test Summary ===${NC}\n"
 echo -e "Total programs:  ${TEST_COUNT}"
 echo -e "Passed:          ${GREEN}${PASSED}${NC}"
 echo -e "Failed:          ${RED}${FAILED}${NC}"
 echo ""
 
-# Print details of failures if any
 if [ "${FAILED}" -gt 0 ]; then
     echo -e "${RED}Failed tests:${NC}"
     for failure in "${FAILED_TESTS[@]}"; do
@@ -121,11 +107,6 @@ if [ "${FAILED}" -gt 0 ]; then
     done
     echo ""
 fi
-
-# Show TRAP directory contents
-echo -e "${BLUE}TRAP files generated:${NC}"
-ls -lh "${TEMP_DIR}/trap" | tail -n +2 | awk '{print "  " $9 " (" $5 ")"}'
-echo ""
 
 # Analyze TRAP contents
 echo -e "${BLUE}Analyzing extracted data:${NC}\n"
@@ -136,19 +117,20 @@ for trap_file in "${TEMP_DIR}/trap"/*.trap; do
 
     filename=$(basename "${trap_file}" .trap)
 
-    # Count different entity types in TRAP file
     programs=$(grep -c "^leo_programs(" "${trap_file}" || echo "0")
     records=$(grep -c "^leo_struct_declarations(" "${trap_file}" || echo "0")
-    transitions=$(grep -c "^leo_functions(.*1," "${trap_file}" || echo "0")
     functions=$(grep -c "^leo_functions(" "${trap_file}" || echo "0")
     mappings=$(grep -c "^leo_mappings(" "${trap_file}" || echo "0")
+    stmts=$(grep -c "^leo_stmts(" "${trap_file}" || echo "0")
+    exprs=$(grep -c "^leo_exprs(" "${trap_file}" || echo "0")
 
     echo -e "${YELLOW}${filename}:${NC}"
     echo "  Programs:    ${programs}"
     echo "  Records:     ${records}"
-    echo "  Transitions: ${transitions}"
     echo "  Functions:   ${functions}"
     echo "  Mappings:    ${mappings}"
+    echo "  Statements:  ${stmts}"
+    echo "  Expressions: ${exprs}"
     echo ""
 done
 

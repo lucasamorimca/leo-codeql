@@ -84,3 +84,9 @@ external/
 
 # Git worktrees (local development only)
 worktrees/
+
+# Rust
+extractor/target/
+
+# Test extraction artifacts
+.test-extraction/

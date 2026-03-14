@@ -4,7 +4,7 @@ CodeQL analysis support for the [Leo programming language](https://leo-lang.org/
 
 ## What This Does
 
-This project provides a full CodeQL language pack for Leo: a Python-based extractor that parses `.leo` files into CodeQL databases, a typed QL library for querying Leo ASTs, and security detectors targeting vulnerabilities specific to zero-knowledge programs.
+This project provides a full CodeQL language pack for Leo: a Rust-based extractor that parses `.leo` files using the official `leo-parser` crate into CodeQL databases, a typed QL library for querying Leo ASTs, and security detectors targeting vulnerabilities specific to zero-knowledge programs.
 
 ## Architecture
 
@@ -12,10 +12,10 @@ This project provides a full CodeQL language pack for Leo: a Python-based extrac
 Leo source (.leo)
     │
     ▼
-Python Extractor ──→ TRAP files ──→ CodeQL Database
+Rust Extractor ──→ TRAP files ──→ CodeQL Database
     │                                      │
-    ├─ Lexer                               ▼
-    ├─ Parser (recursive descent)    QL Library (typed AST)
+    ├─ leo-parser 3.5.0 (official)        ▼
+    ├─ AST walker                   QL Library (typed AST)
     └─ TRAP Generator                      │
                                            ▼
                                    Security Queries ──→ SARIF findings
@@ -35,24 +35,23 @@ Python Extractor ──→ TRAP files ──→ CodeQL Database
 ### Prerequisites
 
 - [CodeQL CLI](https://github.com/github/codeql-cli-binaries) (2.15+)
-- Python 3.13+ with [uv](https://docs.astral.sh/uv/)
+- Rust toolchain (stable, 1.85+)
 
 ### Install
 
 ```bash
 git clone https://github.com/lucasamorimca/leo-codeql.git
 cd leo-codeql
-cd extractor && uv sync && cd ..
+cd extractor && cargo build --release && cd ..
 ```
 
 ### Extract a Leo project
 
 ```bash
-cd extractor
 TRAP_FOLDER=/tmp/trap \
 SOURCE_ARCHIVE=/tmp/src \
 LGTM_SRC=/path/to/your/leo/project \
-uv run python3 -m leo_extractor.main
+./extractor/target/release/leo-extractor
 ```
 
 ### Run security queries
@@ -69,9 +68,6 @@ codeql database analyze your-db \
 ### Run tests
 
 ```bash
-# Python extractor tests
-cd extractor && uv run python -m pytest tests/ -v
-
 # Extraction validation (all 7 test programs)
 ./scripts/run-extraction-test.sh
 
@@ -82,15 +78,12 @@ codeql query compile --search-path=ql/lib ql/src/security/*.ql
 ## Project Structure
 
 ```
-├── extractor/              Python extractor
-│   └── leo_extractor/
-│       ├── lexer.py            Tokenizer (104 token types)
-│       ├── parser.py           Recursive-descent parser
-│       ├── expression_parser.py  Precedence-climbing expressions
-│       ├── ast_nodes.py        AST node definitions (40+ types)
-│       ├── ast_to_trap.py      AST → TRAP converter
-│       ├── trap_writer.py      TRAP file writer
-│       └── main.py             Entry point
+├── extractor/              Rust extractor (leo-parser 3.5.0)
+│   └── src/
+│       ├── main.rs             Entry point, file discovery, parsing
+│       ├── ast_to_trap.rs      AST → TRAP walker
+│       ├── trap_writer.rs      TRAP file writer
+│       └── op_codes.rs         Operator code mappings
 ├── ql/
 │   ├── lib/
 │   │   ├── leo.dbscheme        Database schema (30+ tables)
@@ -131,7 +124,7 @@ select t, "Async transition " + t.getName() + " accepts private parameter " + p.
 - Functions, transitions (external entry points), and inline functions
 - Records (private UTXO state) and structs
 - Mappings (public on-chain key-value storage)
-- Async transitions with `finalize`
+- Async transitions with async functions (finalize)
 - All expression types (binary, unary, ternary, calls, field access, struct init, casts)
 - All statement types (let, const, assign, if/else if/else, for, return, assert)
 - Type system (primitives, address, field, group, scalar, arrays, tuples)
