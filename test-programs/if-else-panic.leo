@@ -23,15 +23,6 @@ program if_else_panic.aleo {
         }
     }
 
-    // Safe: finalize function with if-else (sequential execution, not circuit)
-    finalize safe_finalize(flag: bool, a: u32, b: u32) {
-        if (flag) {
-            let result: u32 = a - b;  // OK in finalize - branches don't both evaluate
-        } else {
-            let result: u32 = a / b;
-        }
-    }
-
     // Safe: wrapped operations don't panic
     transition safe_wrapped(flag: bool, a: u32, b: u32) -> u32 {
         if (flag) {
