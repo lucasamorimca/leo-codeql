@@ -1,0 +1,60 @@
+# cargo-deny configuration for leo-codeql extractor
+# See https://embarkstudios.github.io/cargo-deny/ for documentation
+
+[advisories]
+# Check for security vulnerabilities
+ignore = [
+    # bincode 1.3.3 is unmaintained but is a transitive dependency from snarkvm
+    # We cannot upgrade without potentially breaking leo-parser compatibility
+    # The bincode team considers 1.3.3 a complete, stable version
+    { id = "RUSTSEC-2025-0141", reason = "transitive dep from snarkvm, cannot upgrade without breaking leo-parser" },
+
+    # derivative 2.2.0 is unmaintained, transitive dep from leo-errors
+    # Cannot upgrade without breaking leo-parser compatibility
+    { id = "RUSTSEC-2024-0388", reason = "transitive dep from leo-errors, cannot upgrade without breaking leo-parser" },
+
+    # fxhash 0.2.1 is unmaintained, transitive dep from leo-span and snarkvm
+    # Cannot upgrade without breaking leo-parser compatibility
+    { id = "RUSTSEC-2025-0057", reason = "transitive dep from leo-span/snarkvm, cannot upgrade without breaking leo-parser" },
+
+    # paste 1.0.15 is unmaintained, transitive dep from snarkvm-console-network
+    # Cannot upgrade without breaking leo-parser compatibility
+    { id = "RUSTSEC-2024-0436", reason = "transitive dep from snarkvm, cannot upgrade without breaking leo-parser" },
+]
+
+[licenses]
+# Allow only specific licenses
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "BSL-1.0",
+    "CC0-1.0",
+    "MPL-2.0",
+    "0BSD",  # BSD Zero Clause (enum-iterator)
+    "GPL-3.0",  # GNU GPL v3 (leo-parser, leo-span, leo-errors)
+    "CDLA-Permissive-2.0",  # Community Data License Agreement (webpki-roots)
+]
+confidence-threshold = 0.8
+
+# Clarify license for ring crate (common issue)
+[[licenses.clarify]]
+crate = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+
+[bans]
+# Warn on multiple versions of same crate
+multiple-versions = "warn"
+wildcards = "allow"
+
+[sources]
+# Only allow crates.io registry
+unknown-registry = "warn"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

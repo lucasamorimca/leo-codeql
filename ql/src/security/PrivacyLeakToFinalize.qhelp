@@ -1,0 +1,39 @@
+<!DOCTYPE qhelp PUBLIC "-//Semmle//qhelp//EN" "qhelp.dtd">
+<qhelp>
+  <overview>
+    <p>
+      Detects when private record data or private parameters are passed to
+      finalize functions or mapping write operations, which would expose
+      sensitive data on the public Aleo blockchain.
+    </p>
+  </overview>
+
+  <recommendation>
+    <p>
+      Do not pass private record fields or private parameters directly to
+      finalize functions. Instead, derive public values from private data
+      within the transition, or restructure the program to avoid exposing
+      private state on-chain.
+    </p>
+  </recommendation>
+
+  <example>
+    <p>The following transition leaks a private amount to finalize:</p>
+    <sample language="leo">
+transition transfer(private r: token.record, amount: u64) {
+    // BAD: amount from private record flows to finalize
+    finalize(r.amount);
+}
+    </sample>
+    <p>Instead, use only public parameters in finalize calls:</p>
+    <sample language="leo">
+transition transfer(public amount: u64) {
+    finalize(amount);
+}
+    </sample>
+  </example>
+
+  <references>
+    <li><a href="https://developer.aleo.org/leo/language#finalize">Leo Finalize Documentation</a></li>
+  </references>
+</qhelp>

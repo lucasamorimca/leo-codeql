@@ -1,0 +1,11 @@
+name: "leo"
+display_name: "Leo"
+version: 0.1.0
+column_kind: "utf8"
+build_modes:
+  - none
+file_types:
+  - name: leo
+    display_name: Leo files
+    extensions:
+      - .leo

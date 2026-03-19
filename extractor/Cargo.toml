@@ -1,0 +1,37 @@
+[package]
+name = "leo-extractor"
+version = "0.1.0"
+edition = "2021"
+description = "CodeQL extractor for the Leo programming language"
+license = "Apache-2.0"
+
+[dependencies]
+leo-parser = "3.5.0"
+leo-ast = "3.5.0"
+leo-span = "3.5.0"
+leo-errors = "3.5.0"
+indexmap = "2.13.0"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+panic_in_result_fn = "deny"
+unimplemented = "deny"
+await_holding_lock = "deny"
+large_futures = "deny"
+exit = "deny"
+mem_forget = "deny"
+dbg_macro = "deny"
+todo = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+module_name_repetitions = "allow"
+similar_names = "allow"

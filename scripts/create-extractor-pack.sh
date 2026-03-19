@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Create CodeQL extractor pack for Leo language
+# Bundles the Rust extractor into a distributable pack
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+echo "Creating Leo CodeQL extractor pack..."
+echo "Project root: $PROJECT_ROOT"
+
+# Build release binary
+echo "Building Rust extractor..."
+(cd "$PROJECT_ROOT/extractor" && cargo build --release)
+
+# Verify required files exist
+required_files=(
+  "codeql-extractor.yml"
+  "tools/autobuild.sh"
+  "extractor/target/release/leo-extractor"
+  "ql/lib/leo.dbscheme"
+  "ql/lib/leo.dbscheme.stats"
+)
+
+for file in "${required_files[@]}"; do
+  if [ ! -f "$PROJECT_ROOT/$file" ]; then
+    echo "Error: Required file not found: $file" >&2
+    exit 1
+  fi
+done
+
+echo "All required files present."
+echo "Extractor pack structure ready for distribution."
+echo ""
+echo "To use this extractor:"
+echo "  1. Set CODEQL_EXTRACTOR_LEO_ROOT to this directory"
+echo "  2. Run: codeql resolve languages --search-path ."

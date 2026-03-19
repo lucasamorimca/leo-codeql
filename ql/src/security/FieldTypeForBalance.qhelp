@@ -1,0 +1,39 @@
+<!DOCTYPE qhelp PUBLIC "-//Semmle//qhelp//EN" "qhelp.dtd">
+<qhelp>
+  <overview>
+    <p>
+      Using <code>field</code> or <code>scalar</code> types for monetary
+      values (balances, amounts, prices) is dangerous because field elements
+      use modular arithmetic that wraps silently at the field prime. An
+      addition that overflows will not panic but instead wrap to a small
+      value, potentially allowing attackers to mint tokens or drain funds.
+    </p>
+  </overview>
+
+  <recommendation>
+    <p>
+      Use bounded integer types (<code>u64</code>, <code>u128</code>) for
+      monetary values. These types have explicit overflow behavior (panic on
+      unwrapped ops, wrap on wrapped ops) that prevents silent corruption.
+    </p>
+  </recommendation>
+
+  <example>
+    <p>The following uses field type for a balance:</p>
+    <sample language="leo">
+struct Token {
+    balance: field,  // BAD: wraps silently at field prime
+}
+    </sample>
+    <p>Use an integer type instead:</p>
+    <sample language="leo">
+struct Token {
+    balance: u64,  // Safe: panics on overflow
+}
+    </sample>
+  </example>
+
+  <references>
+    <li><a href="https://developer.aleo.org/leo/language#field">Leo Field Type Documentation</a></li>
+  </references>
+</qhelp>

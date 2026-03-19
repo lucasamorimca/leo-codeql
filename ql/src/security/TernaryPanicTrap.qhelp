@@ -1,0 +1,34 @@
+<!DOCTYPE qhelp PUBLIC "-//Semmle//qhelp//EN" "qhelp.dtd">
+<qhelp>
+  <overview>
+    <p>
+      In Leo's zero-knowledge circuits, both branches of ternary expressions
+      and if-else statements are always evaluated regardless of the condition.
+      Unwrapped arithmetic operations (add, sub, mul, div, mod, pow) that can
+      panic will cause transaction failure even in the "unused" branch.
+    </p>
+  </overview>
+
+  <recommendation>
+    <p>
+      Use wrapped arithmetic operations (add_wrapped, sub_wrapped, etc.) in
+      ternary and if-else branches, or restructure the logic to avoid
+      panic-prone operations in conditional branches.
+    </p>
+  </recommendation>
+
+  <example>
+    <p>The following ternary panics when b &gt; a, even when flag is true:</p>
+    <sample language="leo">
+let result: u32 = flag ? a : a - b;  // BAD: a - b always evaluated
+    </sample>
+    <p>Use wrapped subtraction instead:</p>
+    <sample language="leo">
+let result: u32 = flag ? a : a.sub_wrapped(b);  // Safe: wraps on underflow
+    </sample>
+  </example>
+
+  <references>
+    <li><a href="https://developer.aleo.org/leo/language#arithmetic">Leo Arithmetic Operations</a></li>
+  </references>
+</qhelp>

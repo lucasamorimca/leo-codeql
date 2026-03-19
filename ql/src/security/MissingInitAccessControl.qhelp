@@ -1,0 +1,39 @@
+<!DOCTYPE qhelp PUBLIC "-//Semmle//qhelp//EN" "qhelp.dtd">
+<qhelp>
+  <overview>
+    <p>
+      Initialization functions (init, initialize, setup) that lack caller
+      identity verification allow any user to re-initialize contract state,
+      potentially overwriting admin settings or resetting critical mappings.
+    </p>
+  </overview>
+
+  <recommendation>
+    <p>
+      Add an <code>assert_eq(self.caller, admin_address)</code> check at the
+      beginning of initialization functions to restrict access to authorized
+      callers only.
+    </p>
+  </recommendation>
+
+  <example>
+    <p>The following init function has no access control:</p>
+    <sample language="leo">
+transition initialize(value: u64) {
+    // BAD: anyone can call this
+    finalize(value);
+}
+    </sample>
+    <p>Add a caller check:</p>
+    <sample language="leo">
+transition initialize(value: u64) {
+    assert_eq(self.caller, aleo1admin...);
+    finalize(value);
+}
+    </sample>
+  </example>
+
+  <references>
+    <li><a href="https://developer.aleo.org/leo/language#self-caller">Leo self.caller Documentation</a></li>
+  </references>
+</qhelp>

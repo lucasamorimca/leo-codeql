@@ -1,0 +1,4 @@
+name: leo-codeql/leo-all
+version: 0.1.0
+dbscheme: leo.dbscheme
+library: true
